@@ -1,0 +1,9 @@
+Title: Disproportionate Penalties vs Reasonable Liquidated Damages in Indian Law
+Source: Indian Contract Act, 1872 (Section 73 & Section 74) & Kailash Nath Associates v. DDA (2015)
+Source URL: https://indiankanoon.org/doc/1439270/
+Classification: General Reference, Not Verified Statutory Code
+
+Summary & Standard Rules:
+1. Section 74 of the Indian Contract Act provides that when a contract is broken, if a sum is named in the contract as the amount to be paid in case of such breach, the party complaining is entitled only to reasonable compensation not exceeding the amount so named.
+2. Indian courts distinguish between a genuine pre-estimate of damages and an oppressive penalty clause. A stipulation for an exorbitant interest rate (e.g., 24% to 36% compound interest) or complete forfeiture of high security deposits for minor delays is considered in terrorem (punitive) and can be struck down as an unlawful penalty.
+3. Reasonable standard late payment interest rates in commercial agreements typically range from 12% to 18% simple annual interest.

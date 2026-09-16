@@ -1,0 +1,9 @@
+Title: Fairness in Unilateral Contract Modifications and Termination Rights
+Source: Indian Law Commission 103rd Report on Unfair Terms in Contracts & Supreme Court Precedents (Pioneer Urban v. Govindan Raghavan)
+Source URL: https://lawcommissionofindia.nic.in/reports/report103.pdf
+Classification: General Reference, Not Verified Statutory Code
+
+Summary & Standard Rules:
+1. Terms of a contract that grant one party sole and absolute discretion to alter financial amounts, unilaterally terminate without cause, or impose penalties without reciprocal rights for the counter-party are termed unilateral or unconscionable.
+2. Standard contracting norms require reasonable advance notification (usually 30 days) and mutual consent before material revisions to terms such as rent, scope of work, fees, or notice periods take effect.
+3. If an amended contract gives one party unilateral power to evict or terminate on 7 days notice while binding the other party to 30 or 60 days, this represents a severe procedural and substantive imbalance.

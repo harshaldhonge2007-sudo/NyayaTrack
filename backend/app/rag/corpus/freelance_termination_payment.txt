@@ -1,0 +1,10 @@
+Title: Standard Freelance Contract Termination, Non-Compete Scope, and Payment Timelines in India
+Source: Indian Contract Act, 1872 (Section 27) & Consumer Affairs Advisory
+Source URL: https://consumeraffairs.nic.in/acts-and-rules/consumer-protection
+Classification: General Reference, Not Verified Statutory Code
+
+Summary & Standard Rules:
+1. Standard independent contractor and freelance consulting agreements typically specify between fifteen (15) to thirty (30) calendar days written notice for no-fault termination.
+2. Invoices are conventionally payable within 15 to 30 calendar days (Net-15 or Net-30) following submission of approved deliverables. Immediate withholding without formal dispute notice is anomalous.
+3. Under Section 27 of the Indian Contract Act 1872, any agreement that restrains anyone from exercising a lawful profession, trade, or business of any kind is void to that extent. Post-termination non-compete clauses against individual gig workers or freelancers are broadly unenforceable in Indian courts.
+4. Clauses imposing unlimited indemnification or unlimited liability onto an individual gig worker or freelancer deviate significantly from fair standard practice.
