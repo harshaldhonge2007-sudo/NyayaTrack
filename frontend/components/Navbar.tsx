@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Scale, FileText, Upload, RefreshCw, Calendar, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Scale, Upload, RefreshCw, Calendar, CheckCircle2 } from "lucide-react";
 
 export default function Navbar() {
+  const router = useRouter();
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
 
@@ -16,7 +18,8 @@ export default function Navbar() {
       setResetDone(true);
       setTimeout(() => {
         setResetDone(false);
-        window.location.href = "/";
+        router.push("/");
+        router.refresh();
       }, 800);
     } catch (e) {
       console.error(e);
@@ -26,11 +29,15 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-40">
+    <nav
+      role="navigation"
+      aria-label="Main Navigation"
+      className="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-40"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-amber-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+        <Link href="/" aria-label="NyayaTrack Homepage" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-amber-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform" aria-hidden="true">
             <Scale className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -48,23 +55,26 @@ export default function Navbar() {
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
             href="/"
+            aria-label="View Document Timeline"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-gray-800/80 transition-colors"
           >
-            <Calendar className="w-4 h-4 text-indigo-400" />
+            <Calendar className="w-4 h-4 text-indigo-400" aria-hidden="true" />
             <span>Timeline</span>
           </Link>
 
           <Link
             href="/upload"
+            aria-label="Intake New Document"
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25 transition-all"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-4 h-4" aria-hidden="true" />
             <span>Intake Document</span>
           </Link>
 
           <button
             onClick={handleReset}
             disabled={resetting}
+            aria-label="Reset to seeded demo state for judging"
             title="Reset to seeded demo state for judging"
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:text-amber-300 hover:bg-gray-800 transition-colors border border-gray-800"
           >
@@ -82,6 +92,6 @@ export default function Navbar() {
           </button>
         </div>
       </div>
-    </header>
+    </nav>
   );
 }

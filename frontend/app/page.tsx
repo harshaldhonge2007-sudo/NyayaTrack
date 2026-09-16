@@ -46,26 +46,33 @@ export default function TimelineDashboard() {
   const [deadlines, setDeadlines] = useState<ComputedDeadline[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const [docsRes, dlRes] = await Promise.all([
-        fetch(`${baseUrl}/api/documents`),
-        fetch(`${baseUrl}/api/deadlines`),
-      ]);
-      const docs = await docsRes.json();
-      const dls = await dlRes.json();
-      setDocuments(docs || []);
-      setDeadlines(dls || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
+    let isMounted = true;
+    async function load() {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        const [docsRes, dlRes] = await Promise.all([
+          fetch(`${baseUrl}/api/documents`),
+          fetch(`${baseUrl}/api/deadlines`),
+        ]);
+        const docs = await docsRes.json();
+        const dls = await dlRes.json();
+        if (isMounted) {
+          setDocuments(docs || []);
+          setDeadlines(dls || []);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const urgentCount = deadlines.filter((d) => d.status === "urgent").length;
@@ -181,6 +188,10 @@ export default function TimelineDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-300">Urgent Notice Windows:</span>
                 <span className="text-xs font-bold text-rose-400">{urgentCount} urgent</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-300">Upcoming Obligations:</span>
+                <span className="text-xs font-bold text-amber-400">{upcomingCount} upcoming</span>
               </div>
             </div>
           </div>

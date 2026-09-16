@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, ShieldAlert, CheckCircle2, UserCheck, PhoneCall, Scale } from "lucide-react";
+import { X, ShieldAlert, CheckCircle2, PhoneCall, Scale } from "lucide-react";
 
 interface LawyerModalProps {
   isOpen: boolean;
@@ -26,30 +26,36 @@ export default function LawyerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lawyer-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+    >
       <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gradient-to-r from-gray-900 to-indigo-950/40">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center" aria-hidden="true">
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">Escalate to an Indian Advocate</h3>
+              <h3 id="lawyer-modal-title" className="text-base font-semibold text-white">Escalate to an Indian Advocate</h3>
               <p className="text-xs text-gray-400">Verified Tenancy & Contract Specialists</p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="Close consultation modal"
             className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {submitted ? (
           <div className="p-8 text-center space-y-4">
-            <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto" aria-hidden="true">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h4 className="text-lg font-semibold text-white">Brief Dispatched to Partner Advocate</h4>
@@ -67,6 +73,7 @@ export default function LawyerModal({
                 setSubmitted(false);
                 onClose();
               }}
+              aria-label="Finish and close consultation modal"
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors"
             >
               Done
@@ -75,7 +82,7 @@ export default function LawyerModal({
         ) : (
           <div className="p-6 space-y-4">
             <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl flex items-start gap-3 text-xs text-indigo-200">
-              <ShieldAlert className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+              <ShieldAlert className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
                 NyayaTrack prepares your questions and clause citations into a structured legal brief so your initial consultation is fast, focused, and cost-effective.
               </span>
@@ -97,8 +104,9 @@ export default function LawyerModal({
             {/* Quick Contact Form */}
             <div className="space-y-3 pt-1">
               <div>
-                <label className="block text-xs font-medium text-gray-300 mb-1">Your Name</label>
+                <label htmlFor="lawyer-user-name" className="block text-xs font-medium text-gray-300 mb-1">Your Name</label>
                 <input
+                  id="lawyer-user-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -108,8 +116,9 @@ export default function LawyerModal({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">City / Jurisdiction</label>
+                  <label htmlFor="lawyer-city" className="block text-xs font-medium text-gray-300 mb-1">City / Jurisdiction</label>
                   <input
+                    id="lawyer-city"
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
@@ -117,8 +126,9 @@ export default function LawyerModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Phone Number</label>
+                  <label htmlFor="lawyer-phone" className="block text-xs font-medium text-gray-300 mb-1">Phone Number</label>
                   <input
+                    id="lawyer-phone"
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -132,9 +142,10 @@ export default function LawyerModal({
             <div className="pt-2">
               <button
                 onClick={() => setSubmitted(true)}
+                aria-label="Request Lawyer Consultation Callback"
                 className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
               >
-                <PhoneCall className="w-4 h-4" />
+                <PhoneCall className="w-4 h-4" aria-hidden="true" />
                 <span>Request Lawyer Consultation Callback</span>
               </button>
               <p className="text-[11px] text-gray-500 text-center mt-2">

@@ -16,9 +16,10 @@ export async function POST(request: Request) {
 
     const qaResponse = answerQuestion(question, doc.content_text, doc.title);
     return NextResponse.json(qaResponse);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to process Q&A";
     return NextResponse.json(
-      { detail: err.message || "Failed to process Q&A" },
+      { detail: errorMsg },
       { status: 500 }
     );
   }

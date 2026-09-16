@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Send, Bot, User, Bookmark, AlertCircle, PhoneCall, Sparkles } from "lucide-react";
+import { Send, Bot, Bookmark, AlertCircle, PhoneCall, Sparkles } from "lucide-react";
 
 interface QACitation {
   source_type: string;
@@ -67,7 +67,7 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
           suggestLawyer: data.suggest_lawyer || false,
         },
       ]);
-    } catch (e) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
@@ -99,7 +99,12 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
       </div>
 
       {/* Message Feed */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation with legal copilot"
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
         {messages.map((m, idx) => (
           <div
             key={idx}
@@ -186,6 +191,7 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
           e.preventDefault();
           handleSend();
         }}
+        aria-label="Ask Question Form"
         className="p-3 border-t border-gray-800 bg-gray-950/90 flex gap-2"
       >
         <input
@@ -193,14 +199,16 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask a question about this document or Indian legal norms..."
+          aria-label="Question text input"
           className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-indigo-500"
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
+          aria-label="Submit question to legal copilot"
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors"
         >
-          <Send className="w-3.5 h-3.5" />
+          <Send className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Ask</span>
         </button>
       </form>

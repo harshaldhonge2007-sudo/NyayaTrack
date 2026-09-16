@@ -1,7 +1,4 @@
-import { DocumentRecord, ComputedDeadline, DocumentComparisonResult, QAResponse } from "./types";
-import { REFERENCE_CORPUS } from "./corpus";
-
-const TODAY = new Date(2026, 8, 16); // Sept 16, 2026
+import { DocumentRecord, ComputedDeadline } from "./types";
 
 export const SEEDED_LEASE: DocumentRecord = {
   id: "doc_lease_001",

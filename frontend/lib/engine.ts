@@ -3,17 +3,12 @@ import {
   FlaggedClause,
   KeyDate,
   AmountItem,
-  ObligationItem,
   ComputedDeadline,
   DocumentComparisonResult,
   DiffFieldChange,
   QAResponse,
-  QACitation,
   DocumentRecord
 } from "./types";
-import { REFERENCE_CORPUS } from "./corpus";
-
-const TODAY = new Date(2026, 8, 16); // Sept 16, 2026
 
 export function analyzeClauseRisks(text: string): FlaggedClause[] {
   const clauses: FlaggedClause[] = [];

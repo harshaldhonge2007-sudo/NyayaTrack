@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GitCompare, ArrowRight, AlertTriangle, ShieldCheck, TrendingUp, Clock } from "lucide-react";
+import { GitCompare, ArrowRight } from "lucide-react";
 
 export interface DiffFieldChange {
   field_name: string;

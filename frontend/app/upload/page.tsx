@@ -9,9 +9,7 @@ import {
   CheckCircle2,
   Loader2,
   ArrowRight,
-  ShieldCheck,
   Zap,
-  Clock,
   Scale
 } from "lucide-react";
 
@@ -116,10 +114,11 @@ export default function IntakePage() {
       setTimeout(() => {
         router.push(`/document/${data.id}`);
       }, 700);
-    } catch (e: any) {
+    } catch (e: unknown) {
       clearInterval(stepInterval);
       setProcessing(false);
-      setErrorMsg(e.message || "An error occurred during document intake");
+      const message = e instanceof Error ? e.message : "An error occurred during document intake";
+      setErrorMsg(message);
     }
   };
 
@@ -170,10 +169,11 @@ export default function IntakePage() {
       <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
         {/* Document Title Input */}
         <div>
-          <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+          <label htmlFor="doc-intake-title" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
             Document Label / Reference Title
           </label>
           <input
+            id="doc-intake-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -183,8 +183,10 @@ export default function IntakePage() {
         </div>
 
         {/* Tab Toggle: Paste vs Upload */}
-        <div className="flex items-center border-b border-gray-800">
+        <div className="flex items-center border-b border-gray-800" role="tablist" aria-label="Input Method">
           <button
+            role="tab"
+            aria-selected={tab === "paste"}
             onClick={() => setTab("paste")}
             className={`pb-3 px-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
               tab === "paste"
@@ -192,10 +194,12 @@ export default function IntakePage() {
                 : "border-transparent text-gray-400 hover:text-gray-300"
             }`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-4 h-4" aria-hidden="true" />
             <span>Paste Document Text</span>
           </button>
           <button
+            role="tab"
+            aria-selected={tab === "upload"}
             onClick={() => setTab("upload")}
             className={`pb-3 px-4 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors ${
               tab === "upload"
@@ -203,7 +207,7 @@ export default function IntakePage() {
                 : "border-transparent text-gray-400 hover:text-gray-300"
             }`}
           >
-            <UploadCloud className="w-4 h-4" />
+            <UploadCloud className="w-4 h-4" aria-hidden="true" />
             <span>Upload File (PDF / Image)</span>
           </button>
         </div>
@@ -211,7 +215,9 @@ export default function IntakePage() {
         {/* Tab Content */}
         {tab === "paste" ? (
           <div>
+            <label htmlFor="raw-text-input" className="sr-only">Paste document text</label>
             <textarea
+              id="raw-text-input"
               rows={12}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
@@ -270,7 +276,11 @@ export default function IntakePage() {
 
       {/* Visible Pipeline Processing Indicators (Section 8 requirement) */}
       {processing && (
-        <div className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4 animate-in fade-in duration-300 shadow-2xl">
+        <div
+          role="status"
+          aria-live="polite"
+          className="p-6 rounded-3xl bg-gray-900 border border-gray-800 space-y-4 animate-in fade-in duration-300 shadow-2xl"
+        >
           <div className="flex items-center justify-between border-b border-gray-800 pb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-400" />

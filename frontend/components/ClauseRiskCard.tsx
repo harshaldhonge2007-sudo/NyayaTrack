@@ -13,10 +13,9 @@ export interface FlaggedClause {
 
 interface ClauseRiskCardProps {
   clause: FlaggedClause;
-  index: number;
 }
 
-export default function ClauseRiskCard({ clause, index }: ClauseRiskCardProps) {
+export default function ClauseRiskCard({ clause }: ClauseRiskCardProps) {
   const [showQuote, setShowQuote] = useState(true);
   const isHigh = clause.risk_level === "high";
   const isMedium = clause.risk_level === "medium";

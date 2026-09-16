@@ -24,9 +24,10 @@ export async function POST(request: Request) {
     saveDocument(docRecord);
 
     return NextResponse.json(docRecord);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to intake document";
     return NextResponse.json(
-      { detail: err.message || "Failed to intake document" },
+      { detail: errorMsg },
       { status: 500 }
     );
   }

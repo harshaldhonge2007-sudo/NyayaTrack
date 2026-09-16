@@ -17,8 +17,6 @@ import {
   Check,
   PhoneCall,
   GitCompare,
-  Quote,
-  Clock,
   Sparkles
 } from "lucide-react";
 
