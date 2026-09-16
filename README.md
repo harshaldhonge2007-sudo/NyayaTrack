@@ -2,6 +2,9 @@
 
 > **Disclaimer:** NyayaTrack organizes timelines, extracts deadlines, and flags risk clauses for informational guidance only. It does not provide legal representation or predict court rulings.
 
+### 🌐 Live Production URL: [https://nyaya-track-azure.vercel.app](https://nyaya-track-azure.vercel.app)
+*(Deployed natively on Vercel with zero external server dependencies)*
+
 ---
 
 ## 1. Chosen Vertical & Persona
