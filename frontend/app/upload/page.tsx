@@ -97,7 +97,8 @@ export default function IntakePage() {
         formData.append("raw_text", rawText);
       }
 
-      const res = await fetch("http://localhost:8000/api/documents/intake", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${baseUrl}/api/documents/intake`, {
         method: "POST",
         body: formData,
       });

@@ -73,7 +73,8 @@ export default function DocumentDetailPage() {
 
     const fetchDoc = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/documents/${docId}`);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        const res = await fetch(`${baseUrl}/api/documents/${docId}`);
         if (!res.ok) throw new Error("Document not found");
         const data = await res.json();
         setDocument(data);
@@ -82,7 +83,7 @@ export default function DocumentDetailPage() {
         // If this is a notice or newly uploaded doc, compare against the seeded lease or freelance doc
         if (data.id !== "doc_lease_001") {
           try {
-            const compRes = await fetch(`http://localhost:8000/api/compare/${data.id}/doc_lease_001`);
+            const compRes = await fetch(`${baseUrl}/api/compare/${data.id}/doc_lease_001`);
             if (compRes.ok) {
               const compData = await compRes.json();
               setComparison(compData);

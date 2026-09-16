@@ -11,7 +11,8 @@ export default function Navbar() {
   const handleReset = async () => {
     setResetting(true);
     try {
-      await fetch("http://localhost:8000/api/reset-seed", { method: "POST" });
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      await fetch(`${baseUrl}/api/reset-seed`, { method: "POST" });
       setResetDone(true);
       setTimeout(() => {
         setResetDone(false);

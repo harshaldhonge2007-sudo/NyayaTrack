@@ -48,9 +48,10 @@ export default function TimelineDashboard() {
 
   const fetchData = async () => {
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const [docsRes, dlRes] = await Promise.all([
-        fetch("http://localhost:8000/api/documents"),
-        fetch("http://localhost:8000/api/deadlines"),
+        fetch(`${baseUrl}/api/documents`),
+        fetch(`${baseUrl}/api/deadlines`),
       ]);
       const docs = await docsRes.json();
       const dls = await dlRes.json();

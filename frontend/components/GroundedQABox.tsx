@@ -50,7 +50,8 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8000/api/qa", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${baseUrl}/api/qa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ document_id: documentId, question: q }),
