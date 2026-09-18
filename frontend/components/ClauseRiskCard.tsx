@@ -13,6 +13,7 @@ export interface FlaggedClause {
 
 interface ClauseRiskCardProps {
   clause: FlaggedClause;
+  index?: number;
 }
 
 export default function ClauseRiskCard({ clause }: ClauseRiskCardProps) {
