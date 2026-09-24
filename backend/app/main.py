@@ -2,7 +2,7 @@ import os
 import uuid
 from datetime import datetime, date
 from typing import Optional, List
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -25,14 +25,31 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for frontend
+# Enterprise Security: Restrict CORS to authorized frontend origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://nyaya-track-azure.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 class QARequest(BaseModel):
     document_id: str
@@ -48,7 +65,8 @@ def health_check():
     }
 
 @app.get("/api/documents", response_model=List[DocumentRecord])
-def list_documents():
+def list_documents(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
     return db_store.get_all_documents()
 
 @app.get("/api/documents/{doc_id}", response_model=DocumentRecord)
@@ -59,7 +77,8 @@ def get_document_detail(doc_id: str):
     return doc
 
 @app.get("/api/deadlines", response_model=List[ComputedDeadline])
-def get_deadlines():
+def get_deadlines(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
     return db_store.get_all_deadlines()
 
 @app.post("/api/documents/intake", response_model=DocumentRecord)
@@ -71,10 +90,13 @@ async def intake_document(
     extracted_text = ""
     ingestion_method = "direct_text"
     filename = None
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
     if file:
         filename = file.filename
         content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File size exceeds maximum permitted limit of 10 MB.")
         lower_name = (filename or "").lower()
         if lower_name.endswith(".pdf"):
             extracted_text, ingestion_method = extract_text_from_pdf_bytes(content)

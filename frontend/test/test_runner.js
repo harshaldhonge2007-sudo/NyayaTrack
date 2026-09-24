@@ -97,3 +97,42 @@ test('Localization: Application provides bilingual English and Devanagari Hindi 
   assert.ok(content.includes('हिन्दी'), 'Must offer Devanagari Hindi toggle');
   assert.ok(content.includes('summary_hi'), 'Must support Hindi summary translation');
 });
+
+// 7. Important Constraint: Informational Guidance vs Legal Advice
+test('Constraint: Enforces clear distinction between legal information and legal advice', () => {
+  const bannerPath = path.join(__dirname, '..', 'components', 'DisclaimerBanner.tsx');
+  const content = fs.readFileSync(bannerPath, 'utf8');
+
+  assert.ok(content.includes('Not Legal Advice'), 'Must clearly state not legal advice');
+  assert.ok(content.includes('Informational Guidance Only'), 'Must declare informational guidance only');
+});
+
+// 8. Legal Professional Preparation: Case Brief Modal
+test('Use Case 7: Advocate case brief modal prepares structured consultation notes', () => {
+  const modalPath = path.join(__dirname, '..', 'components', 'LawyerModal.tsx');
+  const content = fs.readFileSync(modalPath, 'utf8');
+
+  assert.ok(content.includes('role="dialog"'), 'Must have role="dialog" for accessibility');
+  assert.ok(content.includes('Case Brief'), 'Must prepare structured case brief');
+  assert.ok(content.includes('questions'), 'Must provide pre-compiled questions for advocate consultation');
+});
+
+// 9. Clause Risk Detection Component Verification
+test('Use Case 3: Clause risk cards render risk levels and source grounding quotes', () => {
+  const cardPath = path.join(__dirname, '..', 'components', 'ClauseRiskCard.tsx');
+  const content = fs.readFileSync(cardPath, 'utf8');
+
+  assert.ok(content.includes('risk_level'), 'Must evaluate risk levels');
+  assert.ok(content.includes('is_grounded'), 'Must track source quote grounding');
+  assert.ok(content.includes('compared_to'), 'Must benchmark against reference corpus');
+});
+
+// 10. Document Comparison Diff Component Verification
+test('Use Case 2: DocumentDiffView highlights material modifications and risk delta', () => {
+  const diffPath = path.join(__dirname, '..', 'components', 'DocumentDiffView.tsx');
+  const content = fs.readFileSync(diffPath, 'utf8');
+
+  assert.ok(content.includes('field_name'), 'Must display changed field');
+  assert.ok(content.includes('old_value'), 'Must show previous baseline value');
+  assert.ok(content.includes('new_value'), 'Must show new revision value');
+});

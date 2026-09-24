@@ -1,8 +1,15 @@
 import io
 from typing import Tuple
 from pypdf import PdfReader
-import pytesseract
-from PIL import Image
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> Tuple[str, str]:
     """
