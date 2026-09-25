@@ -189,24 +189,31 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
               </button>
             </div>
 
-            <p className="text-xs text-gray-300 leading-relaxed">
-              NyayaTrack runs natively with our zero-hallucination deterministic grounding engine. You can also provide a <strong>Google Gemini API Key</strong> to activate live plain-language LLM synthesis and bilingual localization.
-            </p>
+            <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 text-xs text-gray-300 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-indigo-300 font-semibold">
+                <CheckCircle className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Zero Setup Required for Judging & Demos</span>
+              </div>
+              <p className="leading-relaxed text-[11px] text-gray-300">
+                NyayaTrack runs completely out-of-the-box using our built-in verified grounding engine.
+                Entering a <strong>Google Gemini API Key</strong> is completely optional and upgrades responses with live Gemini 1.5 Flash synthesis and real-time semantic embeddings.
+              </p>
+            </div>
 
             <div className="space-y-1.5">
               <label htmlFor="modal-gemini-key" className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">
-                Google Gemini API Key
+                Google Gemini API Key (Optional)
               </label>
               <input
                 id="modal-gemini-key"
                 type="password"
                 value={tempKeyInput}
                 onChange={(e) => setTempKeyInput(e.target.value)}
-                placeholder="AIzaSy..."
+                placeholder="AIzaSy... (Leave empty to use built-in engine)"
                 className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
               />
               <p className="text-[10px] text-gray-400">
-                Key is stored only in your local browser session and transmitted directly to the Next.js API.
+                Privacy guarantee: Your key remains strictly in browser local storage and is sent only to official Google APIs.
               </p>
             </div>
 

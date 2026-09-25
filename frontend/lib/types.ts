@@ -27,8 +27,10 @@ export interface FlaggedClause {
   is_grounded: boolean;
 }
 
+export type DocumentType = "Notice" | "Contract" | "Agreement" | "Policy" | "Unknown";
+
 export interface StructuredExtraction {
-  document_type: "Notice" | "Contract" | "Agreement" | "Policy" | "Unknown";
+  document_type: DocumentType;
   confidence: number;
   parties: string[];
   key_dates: KeyDate[];

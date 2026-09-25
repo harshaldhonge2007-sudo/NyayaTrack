@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { QACitation, QAResponse } from "./types";
+import { QACitation, QAResponse, StructuredExtraction, KeyDate, AmountItem, ObligationItem, DocumentType } from "./types";
+import { verifySourceQuote } from "./engine";
 
 // Multi-Tier Prompt Injection Patterns
 const INJECTION_PATTERNS = [
@@ -34,6 +35,39 @@ const VERDICT_PATTERNS = [
   /\bpunish\s+the\s+(?:landlord|client)\b/i,
   /\bwin\s+in\s+court\b/i,
 ];
+
+/**
+ * Sanitizes document and prompt content to neutralize adversarial injection attempts.
+ */
+export function sanitizeDocumentContent(text: string): string {
+  if (!text) return "";
+  const filterList = [
+    /ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions/gi,
+    /you\s+are\s+now\s+(?:a|an)\b/gi,
+    /system\s+prompt/gi,
+    /disregard\s+(?:safety|rules|constraints)/gi,
+    /developer\s+mode/gi,
+    /dan\s+mode/gi,
+    /bypass\s+filter/gi,
+    /roleplay\s+as/gi,
+    /as\s+an\s+ai\b/gi,
+  ];
+  let sanitized = text;
+  filterList.forEach((pat) => {
+    sanitized = sanitized.replace(pat, "[CONTENT_FILTERED]");
+  });
+  return sanitized;
+}
+
+/**
+ * Helper to enforce API timeout and prevent indefinite hanging.
+ */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Gemini API request timed out")), timeoutMs)
+  );
+  return Promise.race([promise, timeoutPromise]);
+}
 
 /**
  * Checks whether a Gemini API key is configured.
@@ -94,6 +128,8 @@ export async function synthesizeGroundedAnswerWithGemini(
       .map(c => `[Source: ${c.source_name} | Type: ${c.source_type} | Section: ${c.page_or_line || "General"}]\n"${c.quote}"`)
       .join("\n\n");
 
+    const sanitizedDoc = sanitizeDocumentContent(docText);
+
     const prompt = `You are NyayaTrack's AI Legal Accessibility Copilot. Your mission is to make legal contracts, notices, and Indian statutory rights clear, accessible, and actionable for regular citizens (tenants, gig workers, freelancers).
 
 DOCUMENT TITLE: "${docTitle}"
@@ -102,7 +138,7 @@ RELEVANT EXCERPTS FROM DOCUMENT & VERIFIED INDIAN STATUTORY GUIDELINES:
 ${citationsContext || "No direct snippet retrieved."}
 
 FULL DOCUMENT CONTENT (FOR CONTEXT):
-${docText.substring(0, 4000)}
+${sanitizedDoc.substring(0, 4000)}
 
 USER QUESTION:
 "${question}"
@@ -117,7 +153,7 @@ STRICT GUIDELINES:
 
 Write a clear, well-structured response (under 250 words).`;
 
-    const result = await model.generateContent(prompt);
+    const result = await withTimeout(model.generateContent(prompt));
     const response = await result.response;
     const answerText = response.text().trim();
 
@@ -165,24 +201,26 @@ export async function generateAiSummaryAndHindi(
       }
     });
 
+    const sanitizedDoc = sanitizeDocumentContent(docText);
+
     const prompt = `You are a bilingual legal accessibility expert in India. Analyze this ${docType} titled "${docTitle}".
 Parties: ${parties.join(", ") || "Unspecified"}
 Financial Amounts: ${amounts.map(a => `${a.label}: ${a.value}`).join(", ") || "None"}
 
 Document Content:
-${docText.substring(0, 3000)}
+${sanitizedDoc.substring(0, 3000)}
 
 TASK:
 1. Provide a concise 2-sentence plain-English summary explaining what this document is, the primary obligations, and any noteworthy risks.
 2. Provide a natural, high-fidelity Devanagari Hindi translation (हिन्दी सारांश) of the summary that ordinary Indian citizens can easily understand.
 
-Format output as JSON:
+Format output strictly as JSON:
 {
   "summary_en": "...",
   "summary_hi": "..."
 }`;
 
-    const result = await model.generateContent(prompt);
+    const result = await withTimeout(model.generateContent(prompt));
     const response = await result.response;
     const rawText = response.text().trim();
 
@@ -198,6 +236,86 @@ Format output as JSON:
     return null;
   } catch (err) {
     console.error("Gemini summary/Hindi error:", err);
+    return null;
+  }
+}
+
+/**
+ * GenAI Structured Field Extraction via Gemini with verbatim grounding validation.
+ */
+export async function extractStructuredFieldsWithGemini(
+  rawText: string,
+  docType: DocumentType,
+  apiKey: string
+): Promise<{
+  parties?: string[];
+  amounts?: AmountItem[];
+  key_dates?: KeyDate[];
+  obligations?: ObligationItem[];
+} | null> {
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 1000,
+      }
+    });
+
+    const sanitizedDoc = sanitizeDocumentContent(rawText);
+
+    const prompt = `You are a legal document parsing AI for Indian tenancy and commercial contracts.
+Analyze the document text below and extract structured fields.
+CRITICAL RULE: For every extracted date, amount, and obligation, you MUST provide the exact, verbatim "source_quote" from the document.
+
+DOCUMENT TEXT:
+${sanitizedDoc.substring(0, 4000)}
+
+Return strictly valid JSON:
+{
+  "parties": ["Name 1", "Name 2"],
+  "amounts": [
+    {"label": "Monthly Rent", "value": "₹29,500", "source_quote": "exact sentence from text"}
+  ],
+  "key_dates": [
+    {"label": "Response Deadline", "date": "10 days", "source_quote": "exact sentence from text"}
+  ],
+  "obligations": [
+    {"party": "Tenant", "obligation": "brief description", "source_quote": "exact sentence from text"}
+  ]
+}`;
+
+    const result = await withTimeout(model.generateContent(prompt));
+    const response = await result.response;
+    const rawTextResp = response.text().trim();
+
+    const jsonMatch = rawTextResp.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // Anti-Hallucination Grounding Verification: Filter any item whose quote is not in rawText
+    const verifiedAmounts: AmountItem[] = (parsed.amounts || []).filter((a: AmountItem) =>
+      verifySourceQuote(a.source_quote || a.value || "", rawText)
+    ).map((a: AmountItem) => ({ ...a, is_grounded: true }));
+
+    const verifiedDates: KeyDate[] = (parsed.key_dates || []).filter((d: KeyDate) =>
+      verifySourceQuote(d.source_quote || d.date || "", rawText)
+    ).map((d: KeyDate) => ({ ...d, is_grounded: true }));
+
+    const verifiedObligations: ObligationItem[] = (parsed.obligations || []).filter((o: ObligationItem) =>
+      verifySourceQuote(o.source_quote || o.obligation || "", rawText)
+    ).map((o: ObligationItem) => ({ ...o, is_grounded: true }));
+
+    return {
+      parties: Array.isArray(parsed.parties) ? parsed.parties.filter((p: unknown) => typeof p === "string" && p.length > 2) : [],
+      amounts: verifiedAmounts,
+      key_dates: verifiedDates,
+      obligations: verifiedObligations
+    };
+  } catch (err) {
+    console.warn("Gemini structured extraction error:", err);
     return null;
   }
 }

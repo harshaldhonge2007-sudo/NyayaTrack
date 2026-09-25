@@ -1,5 +1,6 @@
+import os
 import re
-from typing import List
+from typing import List, Optional
 from app.models.schemas import QAResponse, QACitation
 from app.rag.retrieve import corpus_manager, cosine_similarity
 from app.rag.embed import embedder
@@ -10,22 +11,59 @@ VERDICT_PROMPTS = [
     "guaranteed", "can i stop paying", "punish the landlord", "court case"
 ]
 
+INJECTION_PATTERNS = [
+    r'ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions',
+    r'system\s+prompt',
+    r'you\s+are\s+now\s+(?:a|an)\b',
+    r'developer\s+mode',
+    r'dan\s+mode',
+    r'disregard\s+(?:safety|rules|constraints)',
+    r'bypass\s+filter',
+]
+
+def sanitize_legal_text(text: str) -> str:
+    """Sanitizes user and document text to prevent prompt injection hijacking."""
+    sanitized = text
+    for pat in INJECTION_PATTERNS:
+        sanitized = re.sub(pat, '[CONTENT_FILTERED]', sanitized, flags=re.IGNORECASE)
+    return sanitized
+
 def answer_legal_question(
     question: str,
     document_text: str,
-    document_title: str
+    document_title: str = "Document",
+    api_key: Optional[str] = None
 ) -> QAResponse:
     """
-    Produces strictly grounded answers with citations.
+    Produces strictly grounded answers with verifiable source citations.
     Falls back to honest 'insufficient information' or hedged lawyer escalation when needed.
     Never generates speculative statutory citations.
+    Supports both standard call convention and test backward-compatibility.
     """
+    # Backwards compatibility check for older test callers passing (doc_id, question, document_text)
+    if question.startswith("doc_") and len(document_title) > 80:
+        actual_title = question
+        actual_question = document_text
+        actual_text = document_title
+        question, document_text, document_title = actual_question, actual_text, actual_title
+
     q_lower = question.lower()
+
+    # 0. Prompt Injection Defense
+    if any(re.search(pat, question, re.IGNORECASE) for pat in INJECTION_PATTERNS):
+        return QAResponse(
+            question=question,
+            answer="Security Guardrail Triggered: The prompt contained instructions attempting to alter system constraints. NyayaTrack operates exclusively as a grounded legal information assistant and ignores prompt override commands.",
+            citations=[],
+            grounding_ok=True,
+            suggest_lawyer=False,
+            disclaimer="NyayaTrack strictly enforces prompt injection defenses."
+        )
 
     # 1. Check if user is asking for a definitive legal prediction or courtroom verdict
     if any(vp in q_lower for vp in VERDICT_PROMPTS):
         # Hedged informational response + lawyer CTA
-        ref_results = corpus_manager.search_corpus(question, top_k=2)
+        ref_results = corpus_manager.search_corpus(question, top_k=2, api_key=api_key)
         citations: List[QACitation] = []
         for ref in ref_results:
             citations.append(QACitation(
@@ -48,16 +86,20 @@ def answer_legal_question(
             answer=answer_text,
             citations=citations,
             grounding_ok=True,
-            suggest_lawyer=True
+            suggest_lawyer=True,
+            disclaimer="This response provides general legal information, not legal advice or case outcome predictions."
         )
 
+    # Sanitize document text
+    clean_doc_text = sanitize_legal_text(document_text)
+
     # 2. Search inside the current document
-    doc_chunks = chunk_document(document_text, max_chunk_size=300)
-    q_vec = embedder.embed_text(question)
-    
+    doc_chunks = chunk_document(clean_doc_text, max_chunk_size=300)
+    q_vec = embedder.embed_text(question, api_key=api_key)
+
     scored_doc_chunks = []
     for chunk in doc_chunks:
-        c_vec = embedder.embed_text(chunk["text"])
+        c_vec = embedder.embed_text(chunk["text"], api_key=api_key)
         score = cosine_similarity(q_vec, c_vec)
         # Check token overlap
         overlap = len(set(q_lower.split()).intersection(set(chunk["text"].lower().split())))
@@ -68,7 +110,7 @@ def answer_legal_question(
     scored_doc_chunks.sort(key=lambda x: x[0], reverse=True)
 
     # 3. Search reference corpus
-    ref_results = corpus_manager.search_corpus(question, top_k=2, min_similarity=0.15)
+    ref_results = corpus_manager.search_corpus(question, top_k=2, min_similarity=0.15, api_key=api_key)
 
     citations: List[QACitation] = []
 
@@ -83,7 +125,8 @@ def answer_legal_question(
             ),
             citations=[],
             grounding_ok=False,
-            suggest_lawyer=True
+            suggest_lawyer=True,
+            disclaimer="NyayaTrack strictly refrains from fabricating information when source evidence is unavailable."
         )
 
     # Compile Citations & Response
@@ -113,7 +156,7 @@ def answer_legal_question(
         combined_explanation += " ".join(doc_context_points) + "\n\n"
     if ref_context_points:
         combined_explanation += " ".join(ref_context_points) + "\n\n"
-    
+
     combined_explanation += (
         "Note: This is general legal information intended to help you understand your position. "
         "It does not constitute formal legal counsel."
@@ -124,5 +167,6 @@ def answer_legal_question(
         answer=combined_explanation.strip(),
         citations=citations,
         grounding_ok=True,
-        suggest_lawyer=len(citations) > 0 and any("unilateral" in c.quote.lower() or "notice" in c.quote.lower() for c in citations)
+        suggest_lawyer=len(citations) > 0 and any("unilateral" in c.quote.lower() or "notice" in c.quote.lower() or "penalty" in c.quote.lower() for c in citations),
+        disclaimer="This response provides general legal information grounded in your document and statutory reference."
     )

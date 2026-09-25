@@ -197,9 +197,9 @@ export default function DocumentDetailPage() {
                 Confidence: {Math.round(extraction.confidence * 100)}%
               </span>
               {isGroundingOk ? (
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium" title="100% of extracted entities and statutory citations are verified against source document text">
                   <ShieldCheck className="w-3 h-3" />
-                  <span>Grounding 100% Verified</span>
+                  <span>All Facts Verified in Source Text</span>
                 </span>
               ) : (
                 <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1 font-medium">
@@ -249,6 +249,19 @@ export default function DocumentDetailPage() {
         </div>
         <p className="text-sm text-gray-200 leading-relaxed font-sans">
           {language === "en" ? extraction.raw_summary : extraction.summary_hi}
+        </p>
+      </div>
+
+      {/* HERO CALLOUT BOX: Timeline Intelligence Differentiator */}
+      <div className="p-4 bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-indigo-950/60 border-2 border-indigo-500/50 rounded-2xl shadow-lg shadow-indigo-950/40">
+        <div className="flex items-center gap-2 text-sm font-bold text-indigo-300 mb-1.5">
+          <Sparkles className="w-4 h-4 text-indigo-400" />
+          <span>🎯 Timeline Intelligence — NyayaTrack Core Innovation</span>
+        </div>
+        <p className="text-xs text-gray-300 leading-relaxed">
+          Unlike one-shot PDF summarizers, NyayaTrack maintains a persistent legal timeline across document revisions.
+          It automatically benchmarks new notices against earlier baseline agreements to mathematically expose hidden rent hikes,
+          compressed notice windows, deposit forfeitures, and unconscionable unilateral clauses.
         </p>
       </div>
 

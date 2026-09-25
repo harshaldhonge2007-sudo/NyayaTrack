@@ -14,7 +14,7 @@ from app.ingestion.ocr import extract_text_from_pdf_bytes, extract_text_from_ima
 from app.extraction.extract_fields import extract_structured_fields
 from app.timeline.deadlines import compute_deadlines_from_dates
 from app.timeline.compare import compare_documents
-from app.qa.answer import answer_legal_question
+from app.qa.answer import answer_legal_question, sanitize_legal_text
 from app.translate.translate import generate_checklist_and_questions, generate_bilingual_summaries
 from app.db.models import db_store
 from app.db.seed import seed_database
@@ -91,13 +91,18 @@ async def intake_document(
     ingestion_method = "direct_text"
     filename = None
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".txt", ".md"]
 
     if file:
         filename = file.filename
         content = await file.read()
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(status_code=413, detail="File size exceeds maximum permitted limit of 10 MB.")
+
         lower_name = (filename or "").lower()
+        if not any(lower_name.endswith(ext) for ext in ALLOWED_EXTENSIONS):
+            raise HTTPException(status_code=400, detail="Unsupported file format. Please upload a PDF, image (.png, .jpg, .webp), or text document.")
+
         if lower_name.endswith(".pdf"):
             extracted_text, ingestion_method = extract_text_from_pdf_bytes(content)
         elif any(lower_name.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp"]):
@@ -113,6 +118,9 @@ async def intake_document(
 
     if not extracted_text or len(extracted_text.strip()) < 10:
         raise HTTPException(status_code=400, detail="Could not extract legible text from document. Please provide a clear PDF, image, or text.")
+
+    # Sanitize document input to neutralize prompt injection payloads
+    extracted_text = sanitize_legal_text(extracted_text)
 
     doc_id = f"doc_{uuid.uuid4().hex[:8]}"
     doc_title = title or (filename if filename else "Uploaded Document")

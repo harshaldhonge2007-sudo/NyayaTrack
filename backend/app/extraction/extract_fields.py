@@ -1,6 +1,10 @@
+import os
 import re
+import json
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+import requests
+
 from app.models.schemas import (
     StructuredExtraction, DocumentType, KeyDate, AmountItem,
     ObligationItem, FlaggedClause, RiskLevel
@@ -12,30 +16,68 @@ from app.ingestion.chunker import split_into_sentences
 def verify_source_quote(source_quote: str, document_text: str) -> bool:
     """
     Verifies that the source_quote exists verbatim as a substring in the document text.
-    Allows for minor normalized whitespace differences.
+    Allows for minor normalized whitespace differences to prevent hallucinated citations.
     """
     if not source_quote or not source_quote.strip():
         return False
-    
-    # Normalize whitespaces
+
     norm_doc = " ".join(document_text.split()).lower()
     norm_quote = " ".join(source_quote.split()).lower()
     return norm_quote in norm_doc
 
-def extract_structured_fields(text: str) -> StructuredExtraction:
+def extract_structured_fields_with_ai(text: str, api_key: Optional[str] = None) -> Optional[dict]:
     """
-    Performs deterministic and verified structured field extraction from document text.
-    Validates every source quote against the source document.
+    Attempts GenAI structured extraction via Google Gemini 1.5 Flash.
+    """
+    key = api_key or os.getenv("GEMINI_API_KEY", "").strip()
+    if not key or "your_" in key:
+        return None
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+        prompt = (
+            "You are an Indian legal document analyzer. Extract structured entities in JSON format: "
+            "parties (array of string names), "
+            "amounts (array of objects with 'label', 'value', and verbatim 'source_quote'), "
+            "key_dates (array of objects with 'label', 'date', and verbatim 'source_quote'), "
+            "obligations (array of objects with 'party', 'obligation', and verbatim 'source_quote').\n"
+            "CRITICAL: The 'source_quote' must be an exact substring from the document.\n\n"
+            f"DOCUMENT:\n{text[:4000]}"
+        )
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "responseMimeType": "application/json"
+            }
+        }
+        resp = requests.post(url, json=payload, timeout=6)
+        if resp.status_code == 200:
+            data = resp.json()
+            cand_text = data.get("candidates", [])[0]["content"]["parts"][0]["text"]
+            return json.loads(cand_text)
+    except Exception:
+        pass
+    return None
+
+def extract_structured_fields(text: str, api_key: Optional[str] = None) -> StructuredExtraction:
+    """
+    Dual-engine structured extraction:
+    1. If Gemini API key is available, attempts GenAI structured schema extraction.
+    2. Enforces strict anti-hallucination verification on every extracted citation.
+    3. Seamlessly merges with or defaults to deterministic pattern-based extraction
+       when offline or when key is absent.
     """
     doc_type, confidence = classify_document(text)
     sentences = split_into_sentences(text)
-    
+
     parties: List[str] = []
     key_dates: List[KeyDate] = []
     amounts: List[AmountItem] = []
     obligations: List[ObligationItem] = []
 
-    # 1. Extract Parties
+    # 1. Deterministic Extraction Baseline
+    # Parties
     party_patterns = [
         r'(?:between|by and between|landlord|lessor|client)\s*[:\-]?\s*([A-Z][a-zA-Z\s\.,]{2,40}?)(?:,\s*residing|hereinafter|and|\(tenant\))',
         r'(?:tenant|lessee|contractor|consultant)\s*[:\-]?\s*([A-Z][a-zA-Z\s\.,]{2,40}?)(?:,\s*residing|hereinafter|and|\(the|\.)',
@@ -51,7 +93,7 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
                 if len(parties) >= 4:
                     break
 
-    # 2. Extract Key Dates & Deadlines
+    # Key Dates & Deadlines
     date_patterns = [
         (r'(\d{1,2}(?:st|nd|rd|th)?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December),?\s+\d{4})', "Formal Date"),
         (r'(\d{4}-\d{2}-\d{2})', "ISO Date"),
@@ -65,7 +107,6 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
             matches = re.finditer(pat, sentence, re.IGNORECASE)
             for m in matches:
                 matched_str = m.group(1).strip()
-                # Specific label context
                 s_lower = sentence.lower()
                 field_label = "Effective Date"
                 if "vacate" in s_lower or "handover" in s_lower:
@@ -79,7 +120,6 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
                 elif "notice period" in s_lower:
                     field_label = "Notice Period"
 
-                # Check if already added
                 if not any(kd.date == matched_str for kd in key_dates):
                     key_dates.append(KeyDate(
                         label=field_label,
@@ -90,7 +130,7 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
                     if len(key_dates) >= 6:
                         break
 
-    # 3. Extract Amounts
+    # Amounts
     amount_patterns = [
         (r'(₹\s*[\d,]+(?:\.\d{2})?|\bINR\s*[\d,]+|Rs\.?\s*[\d,]+)', "Currency Amount"),
         (r'(\b[\d,]+\s*(?:Rupees|per month|p\.m\.|advance|deposit)\b)', "Rent / Deposit")
@@ -123,11 +163,10 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
                     if len(amounts) >= 6:
                         break
 
-    # 4. Extract Obligations
+    # Obligations
     for sentence in sentences:
         s_lower = sentence.lower()
         if any(w in s_lower for w in ["shall", "must", "agrees to", "covenants to", "required to", "is notified to"]):
-            # Identify party
             party_name = "Tenant / Recipient"
             if any(w in s_lower for w in ["landlord", "owner", "lessor"]):
                 party_name = "Landlord"
@@ -136,7 +175,6 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
             elif any(w in s_lower for w in ["freelancer", "contractor"]):
                 party_name = "Contractor"
 
-            # Summarize obligation
             clean_ob = sentence.strip()
             if clean_ob and len(clean_ob) > 20 and not any(o.obligation == clean_ob for o in obligations):
                 obligations.append(ObligationItem(
@@ -148,10 +186,40 @@ def extract_structured_fields(text: str) -> StructuredExtraction:
                 if len(obligations) >= 5:
                     break
 
-    # 5. Extract Flagged Clauses
+    # 2. Optional GenAI Extraction Enrichment
+    ai_data = extract_structured_fields_with_ai(text, api_key=api_key)
+    if ai_data and isinstance(ai_data, dict):
+        if "parties" in ai_data and isinstance(ai_data["parties"], list):
+            for p in ai_data["parties"]:
+                if isinstance(p, str) and len(p) > 2 and p not in parties:
+                    parties.append(p)
+
+        if "amounts" in ai_data and isinstance(ai_data["amounts"], list):
+            for a in ai_data["amounts"]:
+                if isinstance(a, dict) and "value" in a and "source_quote" in a:
+                    if verify_source_quote(a["source_quote"], text) and not any(x.value == a["value"] for x in amounts):
+                        amounts.append(AmountItem(
+                            label=a.get("label", "Financial Amount"),
+                            value=a["value"],
+                            source_quote=a["source_quote"],
+                            is_grounded=True
+                        ))
+
+        if "key_dates" in ai_data and isinstance(ai_data["key_dates"], list):
+            for kd in ai_data["key_dates"]:
+                if isinstance(kd, dict) and "date" in kd and "source_quote" in kd:
+                    if verify_source_quote(kd["source_quote"], text) and not any(x.date == kd["date"] for x in key_dates):
+                        key_dates.append(KeyDate(
+                            label=kd.get("label", "Key Date"),
+                            date=kd["date"],
+                            source_quote=kd["source_quote"],
+                            is_grounded=True
+                        ))
+
+    # Flagged Clauses
     flagged_clauses = analyze_clause_risks(text)
 
-    # 6. Verify Grounding on all fields
+    # 3. Grounding Verification
     all_grounded = True
     for kd in key_dates:
         if not verify_source_quote(kd.source_quote, text):

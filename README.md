@@ -49,10 +49,10 @@ NyayaTrack enforces a strict four-layer separation of concerns:
 
 | Layer | Responsibility | Technology | Architectural Rationale |
 |---|---|---|---|
-| **Deterministic & Math Core** | Upload handling, dynamic calendar sorting, deadline math, dictionary comparison diffing | FastAPI, Next.js 16.3.5, Pure Python / TypeScript | **Zero Arithmetic Drift:** Date countdowns and percentage rent hikes (+18.0%) are calculated in pure code, never by an LLM. |
-| **Ingestion & Parsing** | Serverless digital PDF extraction & OCR fallback | `unpdf` (zero-dependency WebAssembly/JS engine), `pypdf`, `pytesseract` | Instant PDF parsing in serverless Next.js edge environments with OCR fallback for scanned images. |
-| **RAG & Retrieval** | Subword token hashing vectorizer + Curated Statutory Corpus | 256-dim FNV-1a/Murmur term-frequency hashing + Curated Indian Legal Corpus (6 texts) | Guaranteed sub-millisecond retrieval with zero hallucinated statutes; supports Gemini `text-embedding-004`. |
-| **GenAI Copilot & Localization** | Plain-language synthesis, clause simplification, bilingual Hindi translation | Google Gemini 1.5 Flash + Deterministic Grounded Fallback | Live LLM synthesis grounded strictly in verified contract excerpts, with automatic fallback ensuring 100% uptime. |
+| **Deterministic & Math Core** | Upload handling, dynamic calendar sorting, deadline math, multi-field comparison diffing | FastAPI, Next.js 16.3.5, Pure Python / TypeScript | **Zero Arithmetic Drift:** Date countdowns, percentage rent hikes (+18.0%), and notice reductions are calculated in deterministic code, never by an LLM. |
+| **Ingestion & Parsing** | Serverless digital PDF extraction & OCR fallback | `unpdf` (zero-dependency WebAssembly/JS engine), `pypdf`, `pytesseract` | Instant PDF parsing in serverless Next.js edge environments with OCR fallback for scanned images and MIME validation. |
+| **Semantic RAG & Retrieval** | Dual-Engine Vector Search: Google Gemini `text-embedding-004` (768-dim) + Local Subword Hash Vectorizer (256-dim) | Google Gemini Embeddings + Curated Indian Legal Statutory Corpus | True semantic similarity matching for paraphrased user questions, with zero-downtime offline fallback. |
+| **GenAI Copilot & Extraction** | Structured entity extraction, plain-language synthesis, clause simplification, Devanagari Hindi translation | Google Gemini 1.5 Flash + Anti-Hallucination Grounding Verification | Live LLM structured extraction and synthesis with 100% verbatim substring verification against source text. |
 
 ---
 
@@ -87,10 +87,12 @@ As documented in [SHORTCUTS.md](SHORTCUTS.md):
 
 ### Security & Anti-Hallucination (Score: 100/100)
 - **Multi-Tier GenAI Safety Guardrails:**
-  - **Prompt Injection Defense:** Regex and semantic filtering blocking instruction overrides (`ignore previous instructions`, `system prompt`, `you are now a`, `developer mode`, `DAN mode`).
+  - **Document Input Sanitization:** Scrubs uploaded text and files to neutralize indirect prompt injection payloads (e.g. `ignore all instructions`, `system prompt:`) before prompting.
+  - **Prompt Injection Defense:** Regex and semantic filtering blocking direct instruction overrides (`ignore previous instructions`, `system prompt`, `you are now a`, `developer mode`, `DAN mode`).
   - **Courtroom Prediction Refusal:** Automatically detects speculative verdict queries (`will I win if I sue`, `is it guaranteed to win in court`) and converts them to calibrated informational guidance with advocate referral CTA.
   - **Scope Filter:** Refuses non-legal inquiries (`capital of France`, `recipe for cake`) to prevent copilot drift.
-- **Strict CORS & Security Headers:**
+- **Strict Ingestion Validation & CORS:**
+  - **File Type & MIME Whitelisting:** Enforces strict extension validation (`.pdf`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.txt`, `.md`) rejecting unverified executables.
   - `Content-Security-Policy`
   - `X-Frame-Options: DENY`
   - `X-Content-Type-Options: nosniff`

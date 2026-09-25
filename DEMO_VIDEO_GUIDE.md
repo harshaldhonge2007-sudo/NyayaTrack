@@ -58,9 +58,9 @@
      - `3. Structured Entity Extraction`
      - `4. Clause Risk Flagging`
      - `5. Timeline Integration & Math`
-  2. When the document view opens, point to the green badge: **"Grounding 100% Verified"**.
+  2. When the document view opens, point to the green badge: **"All Facts Verified in Source Text"**.
 * **Narration / Voiceover:**
-  > *"Here GenAI is working dynamically in the background: it extracts parties, financial values, and key obligations using strict Pydantic schemas. Crucially, NyayaTrack enforces an anti-hallucination check: every extracted fact must match a verbatim substring quote in the source text, proven by our 'Grounding 100% Verified' badge."*
+  > *"Here GenAI is working dynamically in the background: it extracts parties, financial values, and key obligations using strict Pydantic schemas. Crucially, NyayaTrack enforces an anti-hallucination check: every extracted fact must match a verbatim substring quote in the source text, proven by our 'All Facts Verified in Source Text' badge."*
 
 ---
 
