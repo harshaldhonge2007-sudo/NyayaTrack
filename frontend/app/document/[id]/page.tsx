@@ -60,6 +60,9 @@ export default function DocumentDetailPage() {
 
   const [document, setDocument] = useState<DocumentDetailRecord | null>(null);
   const [comparison, setComparison] = useState<DocumentComparisonResult | null>(null);
+  const [allDocs, setAllDocs] = useState<DocumentDetailRecord[]>([]);
+  const [selectedPriorId, setSelectedPriorId] = useState<string>("");
+  const [comparingLoading, setComparingLoading] = useState(false);
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [copiedChecklist, setCopiedChecklist] = useState(false);
   const [copiedQuestions, setCopiedQuestions] = useState(false);
@@ -77,17 +80,32 @@ export default function DocumentDetailPage() {
         const data = await res.json();
         setDocument(data);
 
-        // Check if there is a prior document to compare against
-        // If this is a notice or newly uploaded doc, compare against the seeded lease or freelance doc
-        if (data.id !== "doc_lease_001") {
-          try {
-            const compRes = await fetch(`${baseUrl}/api/compare/${data.id}/doc_lease_001`);
-            if (compRes.ok) {
-              const compData = await compRes.json();
-              setComparison(compData);
+        // Fetch all available documents to enable dynamic cross-document comparison
+        const allRes = await fetch(`${baseUrl}/api/documents`);
+        if (allRes.ok) {
+          const allDocsData: DocumentDetailRecord[] = await allRes.json();
+          const otherDocs = allDocsData.filter(d => d.id !== data.id);
+          setAllDocs(otherDocs);
+
+          if (otherDocs.length > 0) {
+            // Smart auto-selection: match contract/freelance vs lease/agreement
+            const isFreelance = data.extraction.document_type === "Contract" || data.title.toLowerCase().includes("freelance") || data.title.toLowerCase().includes("consulting");
+            const matchedPrior = otherDocs.find(d => 
+              isFreelance 
+                ? (d.id === "doc_free_002" || d.extraction.document_type === "Contract")
+                : (d.id === "doc_lease_001" || d.extraction.document_type === "Agreement")
+            ) || otherDocs[0];
+
+            setSelectedPriorId(matchedPrior.id);
+            try {
+              const compRes = await fetch(`${baseUrl}/api/compare/${data.id}/${matchedPrior.id}`);
+              if (compRes.ok) {
+                const compData = await compRes.json();
+                setComparison(compData);
+              }
+            } catch (err) {
+              console.log("No comparison target found", err);
             }
-          } catch (err) {
-            console.log("No comparison target found", err);
           }
         }
       } catch (e) {
@@ -99,6 +117,27 @@ export default function DocumentDetailPage() {
 
     fetchDoc();
   }, [docId]);
+
+  const handleSelectPriorDoc = async (priorId: string) => {
+    setSelectedPriorId(priorId);
+    if (!priorId) {
+      setComparison(null);
+      return;
+    }
+    setComparingLoading(true);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const compRes = await fetch(`${baseUrl}/api/compare/${docId}/${priorId}`);
+      if (compRes.ok) {
+        const compData = await compRes.json();
+        setComparison(compData);
+      }
+    } catch (err) {
+      console.error("Comparison fetch failed:", err);
+    } finally {
+      setComparingLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -213,23 +252,60 @@ export default function DocumentDetailPage() {
         </p>
       </div>
 
-      {/* KILLER FEATURE: Side-by-side Timeline Comparison Panel (if available) */}
-      {comparison && comparison.differences.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <GitCompare className="w-4 h-4 text-indigo-400" />
-              <h2 className="text-base font-bold text-white tracking-tight">
-                Cross-Document Diff (Timeline Intelligence)
-              </h2>
-            </div>
-            <span className="text-xs text-amber-400 font-semibold">
-              {comparison.differences.length} Material Changes Detected
-            </span>
+      {/* KILLER FEATURE: Side-by-side Timeline Comparison Panel with Dynamic Baseline Selection */}
+      <section className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <GitCompare className="w-4 h-4 text-indigo-400" />
+            <h2 className="text-base font-bold text-white tracking-tight">
+              Cross-Document Diff (Timeline Intelligence)
+            </h2>
           </div>
-          <DocumentDiffView comparison={comparison} />
-        </section>
-      )}
+          {allDocs.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="compare-baseline-select" className="text-xs text-gray-400 font-medium">
+                Compare with:
+              </label>
+              <select
+                id="compare-baseline-select"
+                aria-label="Select baseline document to compare against"
+                value={selectedPriorId}
+                onChange={(e) => handleSelectPriorDoc(e.target.value)}
+                className="bg-gray-900 border border-gray-700 text-xs text-indigo-300 rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                {allDocs.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.title} ({d.extraction.document_type})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {comparingLoading ? (
+          <div className="p-8 text-center bg-gray-900/60 border border-gray-800 rounded-2xl">
+            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-xs text-gray-400">Computing mathematical clause & financial diffs...</p>
+          </div>
+        ) : comparison && comparison.differences.length > 0 ? (
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-gray-400">
+                Baseline: <strong className="text-indigo-300">{comparison.prior_doc_title}</strong>
+              </span>
+              <span className="text-amber-400 font-semibold">
+                {comparison.differences.length} Material Changes Detected
+              </span>
+            </div>
+            <DocumentDiffView comparison={comparison} />
+          </div>
+        ) : (
+          <div className="p-4 bg-gray-900/40 border border-gray-800/80 rounded-2xl text-xs text-gray-400">
+            No material differences detected between this document and the selected baseline.
+          </div>
+        )}
+      </section>
 
       {/* Risk Analysis Section */}
       <section className="space-y-3">

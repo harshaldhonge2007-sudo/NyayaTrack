@@ -95,4 +95,6 @@ export interface QAResponse {
   grounding_ok: boolean;
   suggest_lawyer: boolean;
   disclaimer: string;
+  ai_synthesized?: boolean;
+  model_used?: string;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Send, Bot, Bookmark, AlertCircle, PhoneCall, Sparkles } from "lucide-react";
+import { Send, Bot, Bookmark, AlertCircle, PhoneCall, Sparkles, Key, X, CheckCircle } from "lucide-react";
 
 interface QACitation {
   source_type: string;
@@ -15,6 +15,8 @@ interface Message {
   content: string;
   citations?: QACitation[];
   suggestLawyer?: boolean;
+  aiSynthesized?: boolean;
+  modelUsed?: string;
 }
 
 interface GroundedQABoxProps {
@@ -25,13 +27,38 @@ interface GroundedQABoxProps {
 export default function GroundedQABox({ documentId, onOpenLawyerModal }: GroundedQABoxProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [customKey, setCustomKey] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("nyaya_gemini_api_key") || "";
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  });
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [tempKeyInput, setTempKeyInput] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("nyaya_gemini_api_key") || "";
+      } catch {
+        return "";
+      }
+    }
+    return "";
+  });
+  const [keySavedMessage, setKeySavedMessage] = useState(false);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
       content:
-        "Hello! I can answer questions grounded strictly in this document and our curated Indian tenancy/contract reference guidelines. How can I help clarify these terms?",
+        "Hello! I am NyayaTrack's Grounded Legal Copilot. I analyze your uploaded document against Indian statutory standards (Transfer of Property Act, Indian Contract Act Sec 27 & 74, Model Tenancy Act, and MSMED Act). How can I help clarify your rights or obligations?",
       citations: [],
       suggestLawyer: false,
+      aiSynthesized: false,
+      modelUsed: "Deterministic Grounded Engine",
     },
   ]);
 
@@ -40,6 +67,25 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
     "Will I win if I sue my landlord in court?",
     "Can he legally forfeit my entire security deposit?",
   ];
+
+  const handleSaveKey = () => {
+    const trimmed = tempKeyInput.trim();
+    setCustomKey(trimmed);
+    try {
+      if (trimmed) {
+        localStorage.setItem("nyaya_gemini_api_key", trimmed);
+      } else {
+        localStorage.removeItem("nyaya_gemini_api_key");
+      }
+    } catch {
+      // ignore
+    }
+    setKeySavedMessage(true);
+    setTimeout(() => {
+      setKeySavedMessage(false);
+      setShowKeyModal(false);
+    }, 1200);
+  };
 
   const handleSend = async (questionText?: string) => {
     const q = (questionText || input).trim();
@@ -54,7 +100,11 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
       const res = await fetch(`${baseUrl}/api/qa`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_id: documentId, question: q }),
+        body: JSON.stringify({
+          document_id: documentId,
+          question: q,
+          api_key: customKey || undefined
+        }),
       });
       const data = await res.json();
 
@@ -65,6 +115,8 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
           content: data.answer,
           citations: data.citations || [],
           suggestLawyer: data.suggest_lawyer || false,
+          aiSynthesized: data.ai_synthesized || false,
+          modelUsed: data.model_used || (data.ai_synthesized ? "Gemini 1.5 Flash" : "Deterministic Engine"),
         },
       ]);
     } catch {
@@ -81,7 +133,7 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col h-[520px]">
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden flex flex-col h-[540px] relative">
       {/* Header */}
       <div className="px-5 py-3.5 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -90,13 +142,105 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
           </div>
           <div>
             <h4 className="text-xs font-bold text-white tracking-wide uppercase">Grounded Legal Copilot</h4>
-            <p className="text-[11px] text-gray-400">Strictly grounded in document & reference corpus</p>
+            <p className="text-[11px] text-gray-400">Strictly grounded in contract & statutory corpus</p>
           </div>
         </div>
-        <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
-          Zero Hallucination Mode
-        </span>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowKeyModal(true)}
+            aria-label="Open AI configuration settings"
+            className={`text-[10px] px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+              customKey
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30"
+                : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20"
+            }`}
+          >
+            {customKey ? (
+              <>
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span>✨ Gemini 1.5 Flash Connected</span>
+              </>
+            ) : (
+              <>
+                <Key className="w-3 h-3 text-emerald-400" />
+                <span>⚡ AI Grounded Mode (Configure Key)</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* API Key Modal */}
+      {showKeyModal && (
+        <div className="absolute inset-0 bg-gray-950/90 backdrop-blur-sm z-30 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <h5 className="text-sm font-bold text-white">Google Gemini 1.5 Flash Settings</h5>
+              </div>
+              <button
+                onClick={() => setShowKeyModal(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-300 leading-relaxed">
+              NyayaTrack runs natively with our zero-hallucination deterministic grounding engine. You can also provide a <strong>Google Gemini API Key</strong> to activate live plain-language LLM synthesis and bilingual localization.
+            </p>
+
+            <div className="space-y-1.5">
+              <label htmlFor="modal-gemini-key" className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">
+                Google Gemini API Key
+              </label>
+              <input
+                id="modal-gemini-key"
+                type="password"
+                value={tempKeyInput}
+                onChange={(e) => setTempKeyInput(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+              />
+              <p className="text-[10px] text-gray-400">
+                Key is stored only in your local browser session and transmitted directly to the Next.js API.
+              </p>
+            </div>
+
+            {keySavedMessage && (
+              <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                <span>API Key saved! Live Gemini synthesis active.</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setTempKeyInput("");
+                  setCustomKey("");
+                  try { localStorage.removeItem("nyaya_gemini_api_key"); } catch {}
+                  setShowKeyModal(false);
+                }}
+                className="px-3 py-1.5 text-xs text-gray-400 hover:text-white rounded-lg transition-colors"
+              >
+                Clear (Use Local Engine)
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveKey}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl transition-colors shadow"
+              >
+                Save & Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Message Feed */}
       <div
@@ -117,6 +261,25 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
                   : "bg-gray-800/90 text-gray-200 border border-gray-700/60"
               }`}
             >
+              {/* AI Badge for Assistant */}
+              {m.role === "assistant" && (
+                <div className="mb-2 pb-1.5 border-b border-gray-700/50 flex items-center justify-between text-[10px]">
+                  {m.aiSynthesized ? (
+                    <span className="text-purple-300 font-semibold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-400" />
+                      <span>✨ Synthesized by Google Gemini 1.5 Flash</span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>⚡ Grounded Deterministic Verification</span>
+                    </span>
+                  )}
+                  {m.modelUsed && (
+                    <span className="text-gray-400 text-[9px]">{m.modelUsed}</span>
+                  )}
+                </div>
+              )}
+
               <p className="whitespace-pre-line">{m.content}</p>
 
               {/* Citations Box */}
@@ -166,7 +329,7 @@ export default function GroundedQABox({ documentId, onOpenLawyerModal }: Grounde
         {loading && (
           <div className="flex items-center gap-2 text-xs text-indigo-400 bg-gray-800/40 px-3 py-2 rounded-xl max-w-[50%]">
             <Sparkles className="w-4 h-4 animate-spin" />
-            <span>Consulting document & reference corpus...</span>
+            <span>Consulting contract & statutory corpus with Gemini AI...</span>
           </div>
         )}
       </div>

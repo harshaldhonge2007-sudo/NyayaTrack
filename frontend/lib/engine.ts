@@ -11,6 +11,13 @@ import {
   DocumentRecord
 } from "./types";
 import { REFERENCE_CORPUS, ReferenceExcerpt } from "./corpus";
+import {
+  getGeminiApiKey,
+  detectPromptInjection,
+  detectNonLegalQuery,
+  detectCourtroomPrediction,
+  synthesizeGroundedAnswerWithGemini
+} from "./ai";
 
 // --- 1. Helper Utility Functions ---
 
@@ -28,7 +35,7 @@ export function extractNumericRupees(text: string): number | null {
 }
 
 export function extractDays(text: string): number | null {
-  const match = text.match(/\b(\d+)\s*(?:calendar\s*)?days\b/i);
+  const match = text.match(/\(?\b(\d+)\)?\s*(?:calendar\s*)?days\b/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
@@ -150,15 +157,15 @@ export function processIntakeText(rawText: string, title: string): DocumentRecor
   let docType: "Notice" | "Agreement" | "Contract" | "Policy" | "Unknown" = "Agreement";
   let confidence = 0.92;
 
-  if (lower.includes("notice") || lower.includes("vacate") || lower.includes("hereby notified") || lower.includes("demand")) {
-    docType = "Notice";
-    confidence = 0.98;
-  } else if (lower.includes("consulting agreement") || lower.includes("addendum") || lower.includes("contractor") || lower.includes("deliverables")) {
-    docType = "Contract";
-    confidence = 0.95;
-  } else if (lower.includes("tenancy agreement") || lower.includes("lease agreement") || lower.includes("premises & term")) {
+  if (lower.includes("tenancy agreement") || lower.includes("lease agreement") || lower.includes("residential lease") || lower.includes("premises & term")) {
     docType = "Agreement";
     confidence = 0.96;
+  } else if (lower.includes("consulting agreement") || lower.includes("services agreement") || lower.includes("independent contractor") || lower.includes("contractor") || lower.includes("deliverables")) {
+    docType = "Contract";
+    confidence = 0.95;
+  } else if (lower.includes("notice") || lower.includes("vacate") || lower.includes("hereby notified") || lower.includes("demand")) {
+    docType = "Notice";
+    confidence = 0.98;
   }
 
   // Dynamic Party Extraction
@@ -196,15 +203,23 @@ export function processIntakeText(rawText: string, title: string): DocumentRecor
       || sentence.match(/(\d{4}-\d{2}-\d{2})/)
       || sentence.match(/(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/);
 
-    const deadlineMatch = sentence.match(/(within\s+\d+\s+(?:calendar\s+)?days(?:\s+of\s+receipt)?)/i);
+    const deadlineMatch = sentence.match(/((?:within|at least)\s+\(?\d+\)?\s*(?:calendar\s*)?days(?:\s+of\s+receipt|\s+prior|\s+written|\s+notice)?)/i)
+      || sentence.match(/(\(?\d+\)?\s+(?:calendar\s+)?days(?:\s+prior|\s+written|\s+notice))/i);
 
     if (deadlineMatch) {
-      key_dates.push({
-        label: sLower.includes("respond") || sLower.includes("acceptance") ? "Response Deadline" : "Deadline Window",
-        date: deadlineMatch[1].trim(),
-        source_quote: sentence,
-        is_grounded: verifySourceQuote(sentence, rawText)
-      });
+      let label = "Deadline Window";
+      if (sLower.includes("notice") || sLower.includes("terminat")) label = "Notice Period Window";
+      else if (sLower.includes("respond") || sLower.includes("acceptance")) label = "Response Deadline";
+      else if (sLower.includes("pay") || sLower.includes("invoice")) label = "Payment Window";
+
+      if (!key_dates.some(k => k.date === deadlineMatch[1].trim())) {
+        key_dates.push({
+          label,
+          date: deadlineMatch[1].trim(),
+          source_quote: sentence,
+          is_grounded: verifySourceQuote(sentence, rawText)
+        });
+      }
     }
 
     if (dateMatch) {
@@ -277,10 +292,10 @@ export function processIntakeText(rawText: string, title: string): DocumentRecor
 
   // Compute Deadlines with Pure Date Math
   const computedDeadlines: ComputedDeadline[] = [];
-  const benchmarkDate = new Date("2026-09-16T00:00:00Z");
+  const benchmarkDate = new Date();
 
   key_dates.forEach((kd, idx) => {
-    let targetIso = "2026-09-30";
+    let targetIso = new Date(benchmarkDate.getTime() + 14 * 86400000).toISOString().split("T")[0];
     let daysRem = 14;
     let status: "urgent" | "upcoming" | "future" | "expired" | "no_date" = "upcoming";
 
@@ -288,17 +303,23 @@ export function processIntakeText(rawText: string, title: string): DocumentRecor
       status = "no_date";
       daysRem = 0;
     } else {
-      // Check if contains specific number of days window
-      const daysMatch = kd.date.match(/within\s+(\d+)\s+days/i);
+      // Check if contains specific number of days window (e.g. "within 15 calendar days" or "at least 30 calendar days")
+      const daysMatch = kd.date.match(/(?:within|at least|\b)\s*\(?(\d+)\)?\s*(?:calendar\s*)?days/i);
       if (daysMatch) {
         daysRem = parseInt(daysMatch[1], 10);
         const targetD = new Date(benchmarkDate.getTime() + daysRem * 86400000);
         targetIso = targetD.toISOString().split("T")[0];
-      } else if (kd.date.toLowerCase().includes("september") && kd.date.includes("2026")) {
-        const dayNum = parseInt(kd.date.match(/\d{1,2}/)?.[0] || "30", 10);
-        const targetD = new Date(`2026-09-${dayNum < 10 ? '0' + dayNum : dayNum}T00:00:00Z`);
-        daysRem = Math.round((targetD.getTime() - benchmarkDate.getTime()) / 86400000);
-        targetIso = targetD.toISOString().split("T")[0];
+      } else {
+        // Try parsing explicit date strings
+        const cleanedDateStr = kd.date.replace(/(\d+)(st|nd|rd|th)/i, "$1");
+        const parsedMs = Date.parse(cleanedDateStr);
+        if (!isNaN(parsedMs)) {
+          const targetD = new Date(parsedMs);
+          daysRem = Math.round((targetD.getTime() - benchmarkDate.getTime()) / 86400000);
+          targetIso = targetD.toISOString().split("T")[0];
+        } else {
+          daysRem = 14;
+        }
       }
 
       if (daysRem < 0) status = "expired";
@@ -340,7 +361,17 @@ export function processIntakeText(rawText: string, title: string): DocumentRecor
     : "No high-risk deviations from standard guidelines were flagged.";
 
   const raw_summary = `This document is a ${docType} concerning ${primaryParty}. ${primaryAmt}${riskNote}`;
-  const summary_hi = `यह दस्तावेज़ ${primaryParty} के संबंध में एक ${docType} है। ${amounts.length > 0 ? `इसमें ${amounts[0].value} की राशि उल्लिखित है। ` : ""}न्यायट्रैक ने इसमें ${flagged_clauses.length} ऐसे प्रावधानों को चिन्हित किया है जिनमें जोखिम हो सकता है।`;
+
+  // Rich, dynamic Hindi translation
+  let summary_hi = `यह दस्तावेज़ ${primaryParty} के संबंध में एक ${docType} है। `;
+  if (amounts.length > 0) {
+    summary_hi += `इसमें ${amounts[0].label} के रूप में ${amounts[0].value} की राशि उल्लिखित है। `;
+  }
+  if (flagged_clauses.length > 0) {
+    summary_hi += `न्यायट्रैक ने इसमें ${flagged_clauses.length} ऐसे प्रावधानों को चिन्हित किया है जिनमें कानूनी जोखिम हो सकता है (जैसे कम समय की नोटिस अवधि या एकतरफा शर्तें)। कृपया हस्ताक्षर या सहमति देने से पूर्व किसी विधिक विशेषज्ञ से परामर्श करें।`;
+  } else {
+    summary_hi += `इस दस्तावेज़ की मुख्य शर्तें सामान्य कानूनी मानकों के अनुरूप प्रतीत होती हैं।`;
+  }
 
   const extraction: StructuredExtraction = {
     document_type: docType,
@@ -358,7 +389,7 @@ export function processIntakeText(rawText: string, title: string): DocumentRecor
   return {
     id,
     title,
-    upload_date: "2026-09-16",
+    upload_date: benchmarkDate.toISOString().split("T")[0],
     content_text: rawText,
     extraction,
     deadlines: computedDeadlines,
@@ -492,34 +523,36 @@ export function answerQuestion(
 ): QAResponse {
   const qLower = question.toLowerCase();
 
-  // 1. Prompt Injection Defense (Phase 8)
-  if (qLower.includes("ignore previous instructions") || qLower.includes("system prompt") || qLower.includes("you are now a") || qLower.includes("as an ai")) {
+  // 1. Multi-Tier Prompt Injection Defense (Phase 8)
+  if (detectPromptInjection(question) || qLower.includes("ignore previous instructions") || qLower.includes("system prompt") || qLower.includes("you are now a") || qLower.includes("as an ai")) {
     return {
       question,
       answer: "Security Guardrail Triggered: The prompt contained instructions attempting to alter system constraints. NyayaTrack operates exclusively as a grounded legal information assistant and ignores prompt override commands.",
       citations: [],
       grounding_ok: true,
       suggest_lawyer: false,
-      disclaimer: "NyayaTrack strictly enforces prompt injection defenses."
+      disclaimer: "NyayaTrack strictly enforces prompt injection defenses.",
+      ai_synthesized: false,
+      model_used: "Security Filter"
     };
   }
 
   // 2. Out-of-Scope / Non-Legal Question Guardrail (Phase 9)
-  const nonLegalKeywords = ["capital of", "recipe for", "weather in", "write a poem", "tell me a joke", "python code", "solve 2+2"];
-  if (nonLegalKeywords.some(kw => qLower.includes(kw))) {
+  if (detectNonLegalQuery(question)) {
     return {
       question,
       answer: "This inquiry is outside the scope of your uploaded legal document. NyayaTrack is an informational legal assistant and can only answer questions grounded in legal contracts, notices, and statutory guidelines.",
       citations: [],
       grounding_ok: false,
       suggest_lawyer: false,
-      disclaimer: "NyayaTrack focuses exclusively on legal document analysis and obligation tracking."
+      disclaimer: "NyayaTrack focuses exclusively on legal document analysis and obligation tracking.",
+      ai_synthesized: false,
+      model_used: "Scope Filter"
     };
   }
 
   // 3. Courtroom Verdict & Speculative Prediction Guardrail (Phase 9)
-  const verdictKeywords = ["will i win", "can i sue", "judge", "guaranteed", "definitely illegal", "court case", "punish the landlord"];
-  if (verdictKeywords.some(kw => qLower.includes(kw))) {
+  if (detectCourtroomPrediction(question)) {
     return {
       question,
       answer: "NyayaTrack cannot provide legal advice or predict court outcomes. Whether a dispute succeeds in an Indian court or rent tribunal depends heavily on formal notices exchanged, written agreements, and jurisdictional facts. Under standard reference principles (such as Indian Contract Act and Model Tenancy guidelines), unilateral modifications and disproportionate penalties are frequently contested as unfair, but you should consult a practicing advocate to evaluate your specific remedy.",
@@ -539,7 +572,9 @@ export function answerQuestion(
       ],
       grounding_ok: true,
       suggest_lawyer: true,
-      disclaimer: "This response provides general legal information, not legal advice or case outcome predictions. Please consult an advocate for specific legal issues."
+      disclaimer: "This response provides general legal information, not legal advice or case outcome predictions. Please consult an advocate for specific legal issues.",
+      ai_synthesized: false,
+      model_used: "Legal Boundary Guard"
     };
   }
 
@@ -605,7 +640,9 @@ export function answerQuestion(
       citations,
       grounding_ok: true,
       suggest_lawyer: bestSentence.toLowerCase().includes("penalty") || bestSentence.toLowerCase().includes("forfeit") || bestSentence.toLowerCase().includes("terminate"),
-      disclaimer: "This response provides general legal information, not legal advice or case outcome predictions. Please consult an advocate for specific legal issues."
+      disclaimer: "This response provides general legal information, not legal advice or case outcome predictions. Please consult an advocate for specific legal issues.",
+      ai_synthesized: false,
+      model_used: "Deterministic Grounded Engine"
     };
   }
 
@@ -624,7 +661,9 @@ export function answerQuestion(
       ],
       grounding_ok: true,
       suggest_lawyer: true,
-      disclaimer: "This response provides general legal information based on verified Indian statutory excerpts."
+      disclaimer: "This response provides general legal information based on verified Indian statutory excerpts.",
+      ai_synthesized: false,
+      model_used: "Deterministic Reference Match"
     };
   }
 
@@ -635,6 +674,47 @@ export function answerQuestion(
     citations: [],
     grounding_ok: false,
     suggest_lawyer: true,
-    disclaimer: "NyayaTrack strictly refrains from fabricating information when source evidence is unavailable."
+    disclaimer: "NyayaTrack strictly refrains from fabricating information when source evidence is unavailable.",
+    ai_synthesized: false,
+    model_used: "Grounding Safety Refusal"
   };
+}
+
+/**
+ * Async Q&A Copilot that leverages Google Gemini 1.5 Flash when configured,
+ * seamlessly falling back to the deterministic grounded engine with zero downtime.
+ */
+export async function answerQuestionWithAI(
+  question: string,
+  docText: string,
+  docTitle: string,
+  customApiKey?: string
+): Promise<QAResponse> {
+  // 1. Run safety guardrails first
+  if (
+    detectPromptInjection(question) ||
+    detectNonLegalQuery(question) ||
+    detectCourtroomPrediction(question)
+  ) {
+    return answerQuestion(question, docText, docTitle);
+  }
+
+  // 2. Check for configured Gemini API key
+  const apiKey = getGeminiApiKey(customApiKey);
+  if (apiKey) {
+    const baseResponse = answerQuestion(question, docText, docTitle);
+    const aiResponse = await synthesizeGroundedAnswerWithGemini(
+      question,
+      docText,
+      docTitle,
+      baseResponse.citations,
+      apiKey
+    );
+    if (aiResponse) {
+      return aiResponse;
+    }
+  }
+
+  // 3. Fallback to deterministic grounded engine
+  return answerQuestion(question, docText, docTitle);
 }
