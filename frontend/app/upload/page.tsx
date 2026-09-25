@@ -37,6 +37,26 @@ Sincerely,
 Rajesh Sharma
 Landlord / Property Owner`;
 
+const SAMPLE_FREELANCE_TEXT = `ADDENDUM & EXTENSION TO MASTER SERVICES CONSULTING AGREEMENT
+
+Date: 14th September 2026
+Between: Apex Digital Solutions Pvt. Ltd., Indiranagar, Bengaluru (Client)
+And: Priya Sharma, Independent Consultant / UI-UX Designer (Consultant)
+
+SUBJECT: SCOPE EXTENSION AND COMMERCIAL AMENDMENT FOR FY 2026-27
+
+This Addendum amends the original Master Services Consulting Agreement dated 10th January 2026 between the Parties:
+
+1. REVISED RETAINER FEE: Effective 1st October 2026, the monthly retainer fee shall be adjusted to ₹75,000 for 120 billable hours per calendar month.
+2. EXTENDED PAYMENT TERMS (NET-45): In supersession of previous Net-15 terms, invoices submitted by the Consultant shall be payable within forty-five (45) calendar days from receipt of invoice.
+3. POST-TERMINATION NON-COMPETE RESTRICTION: The Consultant covenants and agrees that for a period of twelve (12) months following contract termination, the Consultant shall not directly or indirectly provide design or consulting services to any competing technology entity within India.
+4. UNCAPPED INDEMNIFICATION: The Consultant unconditionally agrees to indemnify and hold harmless the Client against any third-party claims, operational losses, or consequential damages arising from deliverables without limitation or financial cap.
+5. MANDATORY EXECUTION DEADLINE: This Addendum must be countersigned and returned within seven (7) business days, failing which ongoing retainer payments shall be suspended.
+
+Agreed and Accepted:
+For Apex Digital Solutions Pvt. Ltd.
+Authorized Signatory`;
+
 export default function IntakePage() {
   const router = useRouter();
   const [tab, setTab] = useState<"paste" | "upload">("paste");
@@ -57,10 +77,16 @@ export default function IntakePage() {
     { title: "Timeline Integration & Math", desc: "Computing pure-code deadline countdowns and diffs" },
   ];
 
-  const handlePreFill = () => {
+  const handlePreFillTenancy = () => {
     setTab("paste");
     setRawText(SAMPLE_DEMO_TEXT.trim());
     setTitle("Lease Renewal & Revision Notice (Flat 304)");
+  };
+
+  const handlePreFillFreelance = () => {
+    setTab("paste");
+    setRawText(SAMPLE_FREELANCE_TEXT.trim());
+    setTitle("Consulting Agreement Addendum (Apex Digital)");
   };
 
   const handleStartIntake = async () => {
@@ -139,30 +165,59 @@ export default function IntakePage() {
         </p>
       </div>
 
-      {/* Demo Script 1-Click Fast Track Button */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-            <Zap className="w-5 h-5" />
+      {/* Demo Script 1-Click Fast Track Selectors */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Scenario 1: Residential Tenancy */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col justify-between gap-3 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-amber-400 tracking-wider">
+                Scenario 1 • Small Tenants
+              </span>
+              <p className="text-sm font-semibold text-white">
+                Lease Renewal & Rent Revision
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                +18% rent hike (₹25k→₹29.5k), 15-day notice cut, ₹1.5L deposit forfeiture clause.
+              </p>
+            </div>
           </div>
-          <div>
-            <span className="text-xs font-bold uppercase text-amber-400 tracking-wider">
-              1-Click Demo Fast Track
-            </span>
-            <p className="text-sm font-semibold text-white">
-              Load &ldquo;Lease Renewal & Revision Notice&rdquo;
-            </p>
-            <p className="text-xs text-gray-400">
-              Pre-populates the Section 5 hackathon demo notice (+18% rent, 15-day notice, 10-day deadline)
-            </p>
-          </div>
+          <button
+            onClick={handlePreFillTenancy}
+            className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold rounded-xl shadow-md transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5"
+          >
+            <span>Load Tenancy Scenario</span>
+          </button>
         </div>
-        <button
-          onClick={handlePreFill}
-          className="shrink-0 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold rounded-xl shadow-md transition-all hover:scale-105"
-        >
-          Load Demo Document
-        </button>
+
+        {/* Scenario 2: Freelancer & Gig Worker */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent border border-indigo-500/30 flex flex-col justify-between gap-3 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Scale className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">
+                Scenario 2 • Freelancers / Gig Workers
+              </span>
+              <p className="text-sm font-semibold text-white">
+                Consulting Agreement Addendum
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Net-45 payment delay, 12-mo non-compete (ICA Sec 27), uncapped indemnification.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handlePreFillFreelance}
+            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all hover:scale-[1.02] flex items-center justify-center gap-1.5"
+          >
+            <span>Load Freelancer Scenario</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Intake Card */}

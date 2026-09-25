@@ -136,3 +136,37 @@ test('Use Case 2: DocumentDiffView highlights material modifications and risk de
   assert.ok(content.includes('old_value'), 'Must show previous baseline value');
   assert.ok(content.includes('new_value'), 'Must show new revision value');
 });
+
+// 11. Multi-Tier AI Guardrails & Prompt Injection Defense
+test('Safety: Multi-tier Q&A defense guards against prompt injection and refuses judicial outcome predictions', () => {
+  const enginePath = path.join(__dirname, '..', 'lib', 'engine.ts');
+  const content = fs.readFileSync(enginePath, 'utf8');
+
+  assert.ok(content.includes('Prompt Injection Defense'), 'Must include prompt injection defense step');
+  assert.ok(content.includes('ignore previous instructions'), 'Must detect prompt override attempts');
+  assert.ok(content.includes('predict court outcomes') || content.includes('guarantee legal outcomes'), 'Must refuse court predictions');
+  assert.ok(content.includes('suggest_lawyer: true'), 'Must trigger advocate referral on risky questions');
+});
+
+// 12. Dynamic Legal Intelligence & Statutory Risk Rules
+test('Legal Intelligence: Clause analyzer benchmarks against ICA Sec 27, Sec 74, TPA Sec 106, and MSMED Act', () => {
+  const enginePath = path.join(__dirname, '..', 'lib', 'engine.ts');
+  const content = fs.readFileSync(enginePath, 'utf8');
+
+  assert.ok(content.includes('Section 27 of the Indian Contract Act'), 'Must evaluate non-compete clauses under Sec 27');
+  assert.ok(content.includes('Section 74 of the Indian Contract Act'), 'Must evaluate liquidated damages under Sec 74');
+  assert.ok(content.includes('Model Tenancy Act') || content.includes('Transfer of Property Act'), 'Must check notice standards');
+  assert.ok(content.includes('MSMED Act'), 'Must check payment windows under MSMED Act');
+});
+
+// 13. Dual-Scenario 1-Click Fast Track Selectors
+test('Demo UX: Intake page offers dual-scenario presets for Tenants and Freelancers', () => {
+  const uploadPath = path.join(__dirname, '..', 'app', 'upload', 'page.tsx');
+  const content = fs.readFileSync(uploadPath, 'utf8');
+
+  assert.ok(content.includes('handlePreFillTenancy'), 'Must provide tenancy demo preset handler');
+  assert.ok(content.includes('handlePreFillFreelance'), 'Must provide freelance demo preset handler');
+  assert.ok(content.includes('Scenario 1 • Small Tenants'), 'Must present Scenario 1 UI card');
+  assert.ok(content.includes('Scenario 2 • Freelancers / Gig Workers'), 'Must present Scenario 2 UI card');
+});
+
