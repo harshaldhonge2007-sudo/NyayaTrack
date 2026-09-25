@@ -20,8 +20,8 @@ from app.db.models import db_store
 from app.db.seed import seed_database
 
 app = FastAPI(
-    title="NyayaTrack API",
-    description="Recurring Legal-Document Copilot for Indian Gig Workers, Freelancers, and Small Tenants",
+    title="NyayaTrack — GenAI-Powered Legal Accessibility & Assistance",
+    description="GenAI-powered solution making legal information and assistance accessible, understandable, and actionable across 7 core use cases.",
     version="1.0.0"
 )
 
@@ -38,7 +38,7 @@ app.add_middleware(
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With", "Origin"],
 )
 
 @app.middleware("http")

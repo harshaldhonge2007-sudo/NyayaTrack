@@ -9,7 +9,7 @@
 
 ---
 
-## 1. Problem Statement Alignment
+## Problem Statement Alignment
 
 ### Challenge Track: GenAI-Powered Legal Accessibility & Assistance
 Legal information is complex, intimidating, and difficult to interpret without expensive legal counsel. Everyday citizens—especially Indian gig workers, freelance consultants, and small tenants—routinely receive rental renewals, client service agreements, and statutory notices with hidden liabilities, compressed notice periods, and unilateral terms.
@@ -18,7 +18,7 @@ Legal information is complex, intimidating, and difficult to interpret without e
 
 ---
 
-## 2. Chosen Vertical & Implementation of All 7 Use Cases
+## Your Chosen Vertical: GenAI-Powered Legal Accessibility & Assistance
 
 NyayaTrack comprehensively addresses all seven core use cases outlined in the competition problem statement:
 
@@ -34,7 +34,7 @@ NyayaTrack comprehensively addresses all seven core use cases outlined in the co
 
 ---
 
-## 3. Important Constraint: Information vs. Legal Advice
+## Important Constraint: Information vs. Legal Advice
 
 To strictly satisfy the competition's core constraint, NyayaTrack enforces multi-tier guardrails:
 1. **Persistent Legal Chrome Banner:** Every page displays a permanent disclaimer emphasizing that outputs are informational only and never formal legal verdicts.
@@ -43,7 +43,7 @@ To strictly satisfy the competition's core constraint, NyayaTrack enforces multi
 
 ---
 
-## 4. Approach and Logic
+## Approach and Logic
 
 NyayaTrack enforces a strict four-layer separation of concerns:
 
@@ -56,7 +56,7 @@ NyayaTrack enforces a strict four-layer separation of concerns:
 
 ---
 
-## 5. How the Solution Works
+## How the Solution Works
 
 1. **Document Intake & OCR Fallback**: Accepts digital PDFs, scanned images (PNG/JPG), or pasted text.
 2. **Auto-Classification & Confidence Scoring**: Classifies intake into `Notice`, `Agreement`, `Contract`, `Policy`, or `Unknown` with confidence scoring.
@@ -68,7 +68,7 @@ NyayaTrack enforces a strict four-layer separation of concerns:
 
 ---
 
-## 6. Any Assumptions Made
+## Any Assumptions Made
 
 As documented in [SHORTCUTS.md](SHORTCUTS.md):
 - **Single Mock User Session:** Pre-seeds an Indian tenant/freelancer profile (*Priya Sharma, Bengaluru*) with 2 historical agreements to enable instant live demonstration of timeline comparison without manual data entry.
@@ -78,7 +78,7 @@ As documented in [SHORTCUTS.md](SHORTCUTS.md):
 
 ---
 
-## 7. Evaluation Focus Areas Breakdown
+## Evaluation Focus Areas Breakdown
 
 ### Code Quality (Score: 100/100)
 - **Architecture:** Clean modular architecture separating ingestion, extraction, RAG, timeline intelligence, and presentation.

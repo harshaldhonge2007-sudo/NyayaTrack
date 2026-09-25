@@ -1,0 +1,14 @@
+{
+  "name": "nyayatrack",
+  "version": "1.0.0",
+  "description": "GenAI-Powered Legal Accessibility & Assistance",
+  "private": true,
+  "scripts": {
+    "test": "./test.sh",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "PYTHONPATH=backend python3 -m unittest discover -s tests -p 'test_*.py'",
+    "benchmark": "python3 tests/benchmark_performance.py",
+    "lint": "cd frontend && npm run lint",
+    "build": "cd frontend && npm run build"
+  }
+}

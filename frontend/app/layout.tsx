@@ -4,8 +4,8 @@ import DisclaimerBanner from "@/components/DisclaimerBanner";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "NyayaTrack — Legal-Document Copilot",
-  description: "Recurring legal-document copilot for Indian gig workers, freelancers, and small tenants.",
+  title: "NyayaTrack — GenAI-Powered Legal Accessibility & Assistance",
+  description: "GenAI-powered solution making legal information and assistance accessible, understandable, and actionable for everyday users across 7 core use cases.",
 };
 
 export default function RootLayout({
