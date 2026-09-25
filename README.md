@@ -111,14 +111,14 @@ As documented in [SHORTCUTS.md](SHORTCUTS.md):
 | Timeline Re-sorting | 0.08 ms | $O(N \log N)$ | $0.00 (Pure memory) |
 
 ### Testing (Score: 100/100)
-- **38 Automated Tests Passing 100% Across Backend and Frontend:**
+- **41 Automated Tests Passing 100% Across Backend and Frontend:**
   - `tests/test_use_cases.py` (7 tests): Explicitly tests all 7 challenge use cases.
   - `tests/test_api_endpoints.py` (8 tests): Validates REST routes, security headers, error handling, and payload size limits.
   - `tests/test_extraction.py` (3 tests): Validates substring quote verification and clause risk detection.
   - `tests/test_deadlines.py` (4 tests): Tests plain-code date parsing, countdowns, and urgency categorization.
   - `tests/test_diff.py` (2 tests): Verifies mathematical percentage diffing (+18% rent) and notice reductions.
   - `tests/test_security.py` (2 tests): Verifies out-of-scope question hedging and courtroom prediction disclaimers.
-  - `frontend/test/test_runner.js` (12 tests): Validates WCAG landmarks, navigation labels, intake forms, CSP headers, seed schemas, math diffing, deadline urgency, Hindi localization, DisclaimerBanner, and LawyerModal.
+  - `frontend/test/test_runner.js` (15 tests): Validates WCAG landmarks, navigation labels, intake forms, CSP headers, seed schemas, math diffing, deadline urgency, Hindi localization, DisclaimerBanner, LawyerModal, prompt injection defense, statutory clause analyzer (ICA Sec 27 & 74, TPA Sec 106, MSMED Act), and dual scenario presets.
   - **Standardized Execution:** Configured with `pytest.ini` and unified root runner `./test.sh` executing in `< 0.05s`.
 
 ### Accessibility (WCAG 2.1 AA Compliant - Score: 100/100)
@@ -133,7 +133,7 @@ As documented in [SHORTCUTS.md](SHORTCUTS.md):
 
 ## 8. Quickstart & Verification Instructions
 
-### Run Unified Test Suite (38/38 Tests Passing)
+### Run Unified Test Suite (41/41 Tests Passing)
 ```bash
 ./test.sh
 ```
